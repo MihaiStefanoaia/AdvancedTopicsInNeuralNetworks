@@ -68,8 +68,7 @@ def deep_forward(data: Tensor, weights: List[Tensor], bias: List[Tensor]) -> Lis
 
 
 def backpropagate(activations: Tensor, error: Tensor, weights: Tensor, biases: Tensor):
-    new_act = (activations * (1 - activations))
-    return new_act * (error @ weights.T)
+    return (activations * (1 - activations)) * (error @ weights.T)
 
 
 def backward_pass(data: Tensor, error: Tensor) -> Tuple[Tensor, Tensor]:
@@ -96,8 +95,7 @@ def train_batch(data: Tensor, expectation: Tensor, weights: List[Tensor], biases
 
 def train_epoch(data: Tensor, labels: Tensor, weights: List[Tensor], biases: List[Tensor], learning_rate: float, batch_size: int) \
                 -> tuple[list[Tensor], list[Tensor]]:
-    # non_blocking = w[0].device.type == 'cuda'
-    non_blocking = False
+    non_blocking = weights[0].device.type == 'cuda'
     for i in range(0, data.shape[0], batch_size):
         batch_data = data[i: i + batch_size].to(weights[0].device, non_blocking=non_blocking)
         batch_labels = labels[i: i + batch_size].to(weights[0].device, non_blocking=non_blocking)
@@ -134,7 +132,6 @@ def train(epochs: int = 1000,
           initialization_interval: Tuple[int, int] = (-1, 1)):
     if shape[0] != 784 or shape[-1] != 10:
         raise RuntimeError('Error: The first layer has to be 784 and the last layer has to be 10')
-    # shape = [2, 2, 1]
     weights = []
     biases = []
     for i in range(len(shape)-1):
@@ -147,13 +144,17 @@ def train(epochs: int = 1000,
     epochs = tqdm(range(epochs))
     for _ in epochs:
         weights, biases = train_epoch(data, labels, weights, biases, learning_rate, batch_size)
-        accuracy = check(test_data, test_labels, weights, biases, batch_size_test)
-        epochs.set_postfix_str(f"accuracy = {accuracy}%")
+        train_accuracy = check(data, torch.max(labels,dim=1)[1], weights, biases, batch_size_test)
+        test_accuracy = check(test_data, test_labels, weights, biases, batch_size_test)
+        loss = torch.nn.functional.cross_entropy(
+                    deep_forward(data.to(weights[0].device, non_blocking=pin_memory), weights, biases)[-1],
+                    labels.to(weights[0].device, non_blocking=pin_memory))
+        epochs.set_postfix_str(f"train accuracy = {train_accuracy}%, test accuracy = {test_accuracy}%, loss = {loss}")
 
 if __name__ == '__main__':
-    torch.set_float32_matmul_precision('high')
+    torch.set_printoptions(precision=4)
     # sh = [784, 10]
     sh = [784, 100, 10]
     # sh = [784, 16, 16, 10]
-    train(epochs=200, shape=sh, batch_size=100)
-    train(epochs=200, shape=sh, device=torch.device('cpu'), batch_size=100)
+    train(epochs=1000, shape=sh, batch_size=2000)
+    train(epochs=200, shape=sh, device=torch.device('cpu'), batch_size=2000)
