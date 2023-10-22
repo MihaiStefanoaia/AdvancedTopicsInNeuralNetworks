@@ -129,7 +129,9 @@ def train(epochs: int = 1000,
           device: torch.device = get_default_device(),
           shape: List[int] = [784, 10],
           batch_size: int = 100,
-          initialization_interval: Tuple[int, int] = (-1, 1)):
+          initialization_interval: Tuple[int, int] = (-1, 1),
+          lr_decay_frequency: int = 50,
+          lr_decay_amount: float = 0.9):
     if shape[0] != 784 or shape[-1] != 10:
         raise RuntimeError('Error: The first layer has to be 784 and the last layer has to be 10')
     weights = []
@@ -142,7 +144,7 @@ def train(epochs: int = 1000,
     test_data, test_labels = load_mnist(train=False, pin_memory=pin_memory)
     batch_size_test = 500
     epochs = tqdm(range(epochs))
-    for _ in epochs:
+    for epoch in epochs:
         weights, biases = train_epoch(data, labels, weights, biases, learning_rate, batch_size)
         train_accuracy = check(data, torch.max(labels,dim=1)[1], weights, biases, batch_size_test)
         test_accuracy = check(test_data, test_labels, weights, biases, batch_size_test)
@@ -150,11 +152,17 @@ def train(epochs: int = 1000,
                     deep_forward(data.to(weights[0].device, non_blocking=pin_memory), weights, biases)[-1],
                     labels.to(weights[0].device, non_blocking=pin_memory))
         epochs.set_postfix_str(f"train accuracy = {train_accuracy}%, test accuracy = {test_accuracy}%, loss = {loss}")
+        if epoch % lr_decay_frequency == 0:
+            learning_rate *= lr_decay_amount
 
 if __name__ == '__main__':
     torch.set_printoptions(precision=4)
     # sh = [784, 10]
     sh = [784, 100, 10]
     # sh = [784, 16, 16, 10]
-    train(epochs=1000, shape=sh, batch_size=2000)
-    train(epochs=200, shape=sh, device=torch.device('cpu'), batch_size=2000)
+    batch_sizes = [500, 1000, 2000, 5000, 10000]
+    learning_rates = [0.00001, 0.0005, 0.001]
+    for bs in batch_sizes:
+        for lr in learning_rates:
+            print(f'learning rate = {lr}, batch size = {bs}')
+            train(epochs=500, shape=sh, batch_size=bs, learning_rate=lr)
