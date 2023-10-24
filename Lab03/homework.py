@@ -160,9 +160,11 @@ if __name__ == '__main__':
     # sh = [784, 10]
     sh = [784, 100, 10]
     # sh = [784, 16, 16, 10]
-    batch_sizes = [500, 1000, 2000, 5000, 10000]
-    learning_rates = [0.00001, 0.0005, 0.001]
-    for bs in batch_sizes:
-        for lr in learning_rates:
-            print(f'learning rate = {lr}, batch size = {bs}')
-            train(epochs=500, shape=sh, batch_size=bs, learning_rate=lr)
+    # batch_sizes = [500, 1000, 2000, 5000, 10000]
+    # learning_rates = [0.00001, 0.0005, 0.001]
+    # for bs in batch_sizes:
+    #     for lr in learning_rates:
+            # print(f'learning rate = {lr}, batch size = {bs}')
+    train(epochs=500, shape=sh, batch_size=2000, learning_rate=0.0005)  # chose the best one
+    train(epochs=500, shape=sh, batch_size=2000, learning_rate=0.0005, device=torch.device('cpu'))  # chose the best one
+    
